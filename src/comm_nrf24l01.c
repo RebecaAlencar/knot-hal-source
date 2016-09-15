@@ -56,10 +56,26 @@ static size_t nrf24l01_recv(int sockfd, void *buffer, size_t len)
 	return length;
 }
 
+static size_t nrf24l01_send(int sockfd, const void *buffer, size_t len)
+{
+	int err;
+
+	/* TODO: break the buffer in parts if the len > NRF24_PW_SIZE*/
+
+	nrf24l01_set_ptx(sockfd);
+	nrf24l01_ptx_data(&buffer, len, true);
+	err = nrf24l01_ptx_wait_datasent();
+
+	nrf24l01_set_prx();
+
+	return err;
+}
+
 struct phy_driver nrf24l01 = {
 	.name = "nRF24L01",
 	.probe = nrf24l01_probe,
 	.remove = nrf24l01_remove,
 	.open = nrf24l01_open,
-	.recv = nrf24l01_recv
+	.recv = nrf24l01_recv,
+	.send = nrf24l01_send
 };
