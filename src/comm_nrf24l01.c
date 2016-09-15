@@ -9,9 +9,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "comm_private.h"
 #include "nrf24l01.h"
+
+#define DEFAULT_CHANNEL 10
 
 static int nrf24l01_probe(void)
 {
@@ -71,11 +74,32 @@ static size_t nrf24l01_send(int sockfd, const void *buffer, size_t len)
 	return err;
 }
 
+static int nrf24l01_listen(int sockfd)
+{
+	if (sockfd < 0 || sockfd > NRF24L01_PIPE_ADDR_MAX)
+		return -EINVAL;
+
+	/* Open pipe zero in the sockfd address */
+	nrf24l01_open_pipe(0, sockfd);
+
+	nrf24l01_set_standby();
+
+	/* Set channel */
+	if (nrf24l01_set_channel(DEFAULT_CHANNEL) == -1)
+		return -1;
+
+	/* Put the radio in RX mode */
+	nrf24l01_set_prx();
+
+	return DEFAULT_CHANNEL;
+}
+
 struct phy_driver nrf24l01 = {
 	.name = "nRF24L01",
 	.probe = nrf24l01_probe,
 	.remove = nrf24l01_remove,
 	.open = nrf24l01_open,
 	.recv = nrf24l01_recv,
-	.send = nrf24l01_send
+	.send = nrf24l01_send,
+	.listen = nrf24l01_listen
 };
