@@ -42,11 +42,9 @@ struct session {
 
 extern struct phy_driver phy_unix;
 extern struct phy_driver phy_serial;
-struct phy_driver *driver[] = {
-	&phy_unix,
-	&phy_serial
-};
 
+static struct phy_driver *phyunix = &phy_unix;
+static struct phy_driver *physerial = &phy_serial;
 
 static int connect_unix(void)
 {
@@ -95,7 +93,7 @@ static gboolean knotd_io_watch(GIOChannel *io, GIOCondition cond,
 
 	printf("Incomming data from knotd (%d)\n\r", knotd_sock);
 
-	readbytes_knotd = driver[0]->recv(knotd_sock, buffer, sizeof(buffer));
+	readbytes_knotd = read(knotd_sock, buffer, sizeof(buffer));
 	if (readbytes_knotd < 0) {
 		printf("read_knotd() error\n\r");
 		return FALSE;
@@ -160,7 +158,8 @@ static gboolean generic_io_watch(GIOChannel *io, GIOCondition cond,
 		/* Reconnect to knotd */
 		knotdfd = connect_unix();
 		if (knotdfd < 0) {
-			driver[0]->close(sock);
+			/* Potential problems? */
+			ops->close(sock);
 			return FALSE;
 		}
 		printf("Connected successfully with knotd (%d)\n\r", knotdfd);
@@ -178,7 +177,7 @@ static gboolean generic_io_watch(GIOChannel *io, GIOCondition cond,
 								 knotdfd);
 	}
 
-	if (driver[0]->send(knotdfd, buffer, nbytes) < 0) {
+	if (write(knotdfd, buffer, nbytes) < 0) {
 		printf("write_knotd() error\n\r");
 		return FALSE;
 	}
@@ -211,6 +210,8 @@ static gboolean generic_accept_cb(GIOChannel *io, GIOCondition cond,
 	}
 	printf("Connected to (%d)\n\r", knotdfd);
 
+	/* Leaking !!!! Losing server socket session & overwriting a client
+	 * session */
 	session = g_new0(struct session, 1);
 
 	/* Tracking unix socket connection & data */
@@ -251,14 +252,14 @@ static int unix_start(void)
 
 	session = g_new0(struct session, 1);
 
-	driver[0]->probe();
-	sock = driver[0]->open(NULL);
+	phyunix->probe();
+	sock = phyunix->open(NULL);
 	if (sock < 0)
 		return sock;
 
-	sock = driver[0]->listen(sock);
+	sock = phyunix->listen(sock);
 	if (sock < 0) {
-		driver[0]->close(sock);
+		phyunix->close(sock);
 		return -1;
 	}
 	printf("Unix server started\n\r");
@@ -266,7 +267,7 @@ static int unix_start(void)
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	session->ops = driver[0];
+	session->ops = phyunix;
 
 	unix_watch_id = g_io_add_watch(io, cond, generic_accept_cb, session);
 
@@ -285,16 +286,16 @@ static int serial_start(void)
 
 	session = g_new0(struct session, 1);
 
-	if (driver[1]->probe() < 0)
+	if (physerial->probe() < 0)
 		return -EIO;
 
-	virtualfd = driver[1]->open("");
+	virtualfd = physerial->open("");
 	printf("virtualfd = (%d)\n\r", virtualfd);
 
 
-	realfd = driver[1]->listen(0);
+	realfd = physerial->listen(0);
 	if (realfd < 0) {
-		driver[1]->close(realfd);
+		physerial->close(realfd);
 		return -errno;
 	}
 
@@ -305,11 +306,9 @@ static int serial_start(void)
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	session->knotd_id = 0;
 	/* Force connection to knotd in generic_io_watch */
-	session->knotd_io = NULL;
 	session->thing_io = io;
-	session->ops = driver[1];
+	session->ops = physerial;
 
 	session->thing_id = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
 						cond, generic_io_watch, session,
@@ -320,12 +319,14 @@ static int serial_start(void)
 	return 0;
 }
 
+/* FIXME: falta serial_stop para chamar ao menos physerial->remove() */
+
 static void unix_stop(void)
 {
 	if (unix_watch_id)
 		g_source_remove(unix_watch_id);
 
-	driver[0]->remove();
+	phyunix->remove();
 }
 
 int manager_start(const char *serial, gboolean unix_sock)
