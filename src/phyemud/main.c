@@ -64,6 +64,10 @@ int main(int argc, char *argv[])
 	err = manager_start(opt_serial, opt_unix);
 	if (err < 0)
 		return EXIT_FAILURE;
+	
+	/* Set user id to nobody */
+	err = setuid(65534);
+	printf("Set user to nobody: %d\n", err);
 
 	signal(SIGTERM, sig_term);
 	signal(SIGINT, sig_term);
