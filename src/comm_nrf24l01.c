@@ -34,6 +34,8 @@ uint8_t aa_pipes[6][5] = {
 	{0x6B, 0x96, 0xB6, 0xC1, 0xF0}
 };
 
+int8_t pipes_allocate[] = {0, 0, 0, 0, 0, 0};
+
 #define NRF24_PIPE0		0
 
 static int nrf24l01_probe(void)
@@ -103,7 +105,16 @@ static int nrf24l01_open(const char *pathname)
 	 * eg: For nRF24 '0' will be mapped to pipe0.
 	 * TODO: Implement addressing
 	 */
+	 /* Return free pipe to new client */
+	 int i;
 
+	for (i = 1; i < sizeof(pipes_allocate); i++) {
+		if (pipes_allocate[i] == 0) {
+			/* one client for pipe*/
+			pipes_allocate[i] = 1;
+			return i;
+		}
+	}
 	return 0;
 }
 
