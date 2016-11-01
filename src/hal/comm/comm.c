@@ -10,12 +10,38 @@
 #include "comm_private.h"
 
 static struct phy_driver *driver = NULL;
+int comm_domain;
 
 int hal_comm_init(int domain)
 {
+	comm_domain = domain;
 	switch(domain){
+		/*init nrf24l01 */
 	case HAL_COMM_PF_NRF24:
 		driver = &nrf24l01;
 		break;
 	}
+}
+
+int hal_comm_open(const char *pathname) //"/dev/spidev0.0"
+{
+	int retval, fd;
+
+	switch(comm_domain){
+	case HAL_COMM_PF_NRF24:
+		/* FIXME: pass 'spi' to driver */
+		retval= driver->probe(pathname);
+		if (retval < 0)
+			return retval;
+
+		/* nRF24 config for broadcast */
+		fd = driver->listen(0);
+		if (fd < 0) {
+			driver->remove();
+			return fd;
+		}
+		break;
+	}
+
+	return fd;
 }

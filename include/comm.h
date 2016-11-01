@@ -17,7 +17,6 @@
 #define HAL_COMM_NRF24PROTO_MGMT	64
 #define HAL_COMM_NRF24PROTO_UDATA	65
 
-/* Serial port */
 int hal_comm_open(const char *pathname);
 
 /* nRF24 and other radios */
