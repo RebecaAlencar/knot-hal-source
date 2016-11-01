@@ -30,3 +30,5 @@ ssize_t hal_comm_write(int sockfd, const void *buffer, size_t count);
 
 int hal_comm_listen(int sockfd);
 int hal_comm_accept(int sockfd, uint64_t *addr);
+
+int hal_comm_init(int domain);
