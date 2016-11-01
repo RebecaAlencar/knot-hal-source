@@ -57,3 +57,9 @@ int hal_comm_open(const char *pathname) //"/dev/spidev0.0"
 
 	return fd;
 }
+
+ssize_t hal_comm_read(int sockfd, void *buffer, size_t count)
+{
+
+	return driver->recv(sockfd, buffer, count);
+}
