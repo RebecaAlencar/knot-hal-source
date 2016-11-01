@@ -6,8 +6,20 @@
  * of the BSD license. See the LICENSE file for details.
  *
  */
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
 
-#include "comm_private.h"
+#ifdef ARDUINO
+#include <avr_errno.h>
+#include <avr_unistd.h>
+#else
+#include <errno.h>
+#include <unistd.h>
+#endif
+#include "include/comm.h"
+#include "src/comm_private.h"
 
 static struct phy_driver *driver = NULL;
 int comm_domain;
@@ -30,7 +42,7 @@ int hal_comm_open(const char *pathname) //"/dev/spidev0.0"
 	switch(comm_domain){
 	case HAL_COMM_PF_NRF24:
 		/* FIXME: pass 'spi' to driver */
-		retval= driver->probe(pathname);
+		retval= driver->probe();
 		if (retval < 0)
 			return retval;
 
